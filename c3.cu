@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <iomanip>
 
 #define C 3
 #define H 1024
@@ -122,9 +123,7 @@ int main() {
     double checksum = 0.0;
     for (double v : h_output) checksum += v;
 
-    std::cout << "Kernel execution time: " << elapsed_ms << " ms\n";
-    std::cout << "Checksum: " << checksum << "\n";
-
+    std::cout << "C3: " << checksum << ", "<< std::fixed << std::setprecision(3) << elapsed_ms << "\n";
     // Cleanup
     cudaFree(d_input);
     cudaFree(d_filter);

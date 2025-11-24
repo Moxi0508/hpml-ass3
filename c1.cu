@@ -95,12 +95,12 @@ int main() {
     CUDA_CHECK(cudaEventRecord(start, 0));
 
     conv_kernel<<<grid, block>>>(d_I0, d_F, d_O);
+
     CUDA_CHECK(cudaEventRecord(stop,0));
     CUDA_CHECK(cudaEventSynchronize(stop));
 
     float elapsed_ms = 0.0f;
     CUDA_CHECK(cudaEventElapsedTime(&elapsed_ms, start, stop));
-    printf("Kernel execution time: %f ms\n", elapsed_ms);
 
     // Copy output back
     CUDA_CHECK(cudaMemcpy(h_O, d_O, size_O, cudaMemcpyDeviceToHost));
@@ -108,7 +108,9 @@ int main() {
     // Compute checksum
     double checksum = 0.0;
     for(size_t i=0;i<K*H*W;++i) checksum += h_O[i];
-    printf("Checksum: %f\n", checksum);
+
+    // ********** REQUIRED OUTPUT FORMAT **********
+    printf("C1:%0.10e,%.3f\n", checksum, elapsed_ms);
 
     // Free memory
     delete[] h_I0;

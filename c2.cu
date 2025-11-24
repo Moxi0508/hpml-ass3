@@ -121,7 +121,7 @@ int main() {
     cudaDeviceSynchronize();
 
     double t1 = seconds();
-    printf("Kernel execution time: %f ms\n", (t1 - t0) * 1000);
+    double exe = (t1 - t0) * 1000;
 
     // Copy result back to host
     cudaMemcpy(h_O, d_O, size_O, cudaMemcpyDeviceToHost);
@@ -129,7 +129,7 @@ int main() {
     // Compute checksum
     double checksum = 0.0;
     for (int i = 0; i < K*W*H; ++i) checksum += h_O[i];
-    printf("Checksum: %f\n", checksum);
+    printf("C2: %0.10e,%.3f\n", checksum, exe);
 
     // Free memory
     free(h_I0);
