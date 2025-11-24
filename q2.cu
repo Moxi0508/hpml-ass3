@@ -1,5 +1,5 @@
 #include <iostream>
-#include <cuda.h>
+#include <cuda_runtime.h>
 using namespace std;
 
 // -------------------------------------------
@@ -8,22 +8,35 @@ using namespace std;
 
 // Scenario 1: one block, one thread
 __global__ void vecAdd_1thread(float *A, float *B, float *C, int N) {
+    // A single thread loops through all N elements.
     for (int i = 0; i < N; i++) {
         C[i] = A[i] + B[i];
     }
 }
 
-// Scenario 2: one block, 256 threads
+// Scenario 2: one block, 256 threads (CORRECTED)
 __global__ void vecAdd_256threads(float *A, float *B, float *C, int N) {
+    // Each thread starts at its threadIdx.x
     int i = threadIdx.x;
-    if (i < N) {
+    // The total number of threads in the block is the stride
+    int stride = blockDim.x; 
+
+    // Use a loop to make the 256 threads process all N elements
+    for (; i < N; i += stride) {
         C[i] = A[i] + B[i];
     }
 }
 
-// Scenario 3: multiple blocks, total threads = N
+// Scenario 3: multiple blocks, total threads approx = N
+// This is the standard, high-performance parallel pattern.
 __global__ void vecAdd_multi(float *A, float *B, float *C, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
+    // (Optional but more robust) Add a grid-stride loop
+    // int stride = gridDim.x * blockDim.x;
+    // for (; i < N; i += stride) {
+    //     C[i] = A[i] + B[i];
+    // }
+    // For this assignment, the simple version is sufficient and correct:
     if (i < N) {
         C[i] = A[i] + B[i];
     }
@@ -40,30 +53,32 @@ int main(int argc, char **argv) {
 
     int scenario = atoi(argv[1]);
     int K = atoi(argv[2]);
-    int N = K * 1000000;
+    long long N = (long long)K * 1000000; // Use long long for N to avoid overflow
 
     cout << "Scenario = " << scenario << ", Vector size = " << N << " elements\n";
 
+    size_t size_bytes = sizeof(float) * N;
+
     // Allocate host memory
-    float *hA = (float*)malloc(sizeof(float) * N);
-    float *hB = (float*)malloc(sizeof(float) * N);
-    float *hC = (float*)malloc(sizeof(float) * N);
+    float *hA = (float*)malloc(size_bytes);
+    float *hB = (float*)malloc(size_bytes);
+    float *hC = (float*)malloc(size_bytes);
 
     // Initialize
-    for (int i = 0; i < N; i++) {
+    for (long long i = 0; i < N; i++) {
         hA[i] = 1.0f;
         hB[i] = 2.0f;
     }
 
     // Allocate device memory
     float *dA, *dB, *dC;
-    cudaMalloc(&dA, sizeof(float) * N);
-    cudaMalloc(&dB, sizeof(float) * N);
-    cudaMalloc(&dC, sizeof(float) * N);
+    cudaMalloc(&dA, size_bytes);
+    cudaMalloc(&dB, size_bytes);
+    cudaMalloc(&dC, size_bytes);
 
     // Copy to device
-    cudaMemcpy(dA, hA, sizeof(float) * N, cudaMemcpyHostToDevice);
-    cudaMemcpy(dB, hB, sizeof(float) * N, cudaMemcpyHostToDevice);
+    cudaMemcpy(dA, hA, size_bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(dB, hB, size_bytes, cudaMemcpyHostToDevice);
 
     // Timing events
     cudaEvent_t start, stop;
@@ -97,6 +112,8 @@ int main(int argc, char **argv) {
     cudaFree(dA);
     cudaFree(dB);
     cudaFree(dC);
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
     free(hA);
     free(hB);
     free(hC);
